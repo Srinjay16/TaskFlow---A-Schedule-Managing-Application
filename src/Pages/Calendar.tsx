@@ -1,8 +1,12 @@
 import { useState } from "react";
 import { Button } from "@/Components/ui/button";
 import { Card, CardContent } from "@/Components/ui/card";
+import { Badge } from "@/Components/ui/badge";
 import { Plus, ChevronLeft, ChevronRight, Clock } from "lucide-react";
+import { useTask, Task } from "@/contexts/TaskContext";
+import TaskDialog from "@/Components/tasks/TaskDialog";
 import { cn } from "@/lib/utils";
+import { format, isSameDay, startOfMonth, endOfMonth } from "date-fns";
 
 const DAYS_OF_WEEK = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 const MONTHS = [
@@ -11,8 +15,35 @@ const MONTHS = [
 ];
 
 export default function Calendar() {
+  const { tasks, getTasksByDate } = useTask();
+  const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date(2025, 8, 6)); // September 6, 2025
   const [selectedDate, setSelectedDate] = useState(6);
+  
+  const getTasksForDay = (day: number) => {
+    const date = new Date(year, month, day);
+    const dateStr = format(date, 'yyyy-MM-dd');
+    return tasks.filter(task => task.dueDate === dateStr);
+  };
+  
+  const getMonthStats = () => {
+    const monthStart = startOfMonth(currentDate);
+    const monthEnd = endOfMonth(currentDate);
+    const monthTasks = tasks.filter(task => {
+      if (!task.dueDate) return false;
+      const taskDate = new Date(task.dueDate);
+      return taskDate >= monthStart && taskDate <= monthEnd;
+    });
+    
+    return {
+      daysWithTasks: new Set(monthTasks.map(task => task.dueDate)).size,
+      completed: monthTasks.filter(task => task.status === 'completed').length,
+      pending: monthTasks.filter(task => task.status === 'pending' || task.status === 'in_progress').length,
+      overdue: monthTasks.filter(task => task.status !== 'completed' && new Date(task.dueDate) < new Date()).length,
+    };
+  };
+  
+  const monthStats = getMonthStats();
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -36,11 +67,13 @@ export default function Calendar() {
   
   // Current month days
   for (let day = 1; day <= daysInMonth; day++) {
+    const tasksForDay = getTasksForDay(day);
     calendarDays.push({
       day,
       isCurrentMonth: true,
       isToday: day === today,
-      hasTasks: day === 7 || day === 8 || day === 11, // Sample days with tasks
+      hasTasks: tasksForDay.length > 0,
+      tasks: tasksForDay,
     });
   }
   
@@ -74,7 +107,11 @@ export default function Calendar() {
             <h1 className="text-2xl font-bold text-foreground">Calendar</h1>
             <p className="text-muted-foreground mt-1">View your tasks in calendar format</p>
           </div>
-          <Button className="bg-primary text-primary-foreground hover:bg-primary/90" data-testid="button-add-task">
+          <Button 
+            className="bg-primary text-primary-foreground hover:bg-primary/90" 
+            data-testid="button-add-task"
+            onClick={() => setIsTaskDialogOpen(true)}
+          >
             <Plus className="mr-2 w-4 h-4" />
             Add Task
           </Button>
@@ -145,19 +182,56 @@ export default function Calendar() {
           {/* Day Details */}
           <Card data-testid="card-day-details">
             <CardContent className="p-6">
-              <h3 className="font-semibold text-foreground mb-4">Saturday, Sep {selectedDate}</h3>
-              <p className="text-sm text-muted-foreground mb-4">0 tasks scheduled</p>
-              
-              {/* Tasks for selected date */}
-              <div className="space-y-3">
-                <div className="text-center py-8">
-                  <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-3">
-                    <Clock className="text-muted-foreground w-6 h-6" />
-                  </div>
-                  <h4 className="font-medium text-foreground mb-1">No tasks scheduled for this date</h4>
-                  <p className="text-sm text-muted-foreground">Select a date with tasks or create a new one</p>
-                </div>
-              </div>
+              {(() => {
+                const selectedTasks = getTasksForDay(selectedDate);
+                return (
+                  <>
+                    <h3 className="font-semibold text-foreground mb-4">
+                      {format(new Date(year, month, selectedDate), 'EEEE, MMM d')}
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-4">{selectedTasks.length} tasks scheduled</p>
+                    
+                    {/* Tasks for selected date */}
+                    <div className="space-y-3">
+                      {selectedTasks.length === 0 ? (
+                        <div className="text-center py-8">
+                          <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-3">
+                            <Clock className="text-muted-foreground w-6 h-6" />
+                          </div>
+                          <h4 className="font-medium text-foreground mb-1">No tasks scheduled for this date</h4>
+                          <p className="text-sm text-muted-foreground">Select a date with tasks or create a new one</p>
+                        </div>
+                      ) : (
+                        selectedTasks.map((task) => (
+                          <div key={task.id} className="p-3 border border-border rounded-lg">
+                            <h5 className="font-medium text-sm text-foreground mb-1">{task.title}</h5>
+                            <div className="flex items-center space-x-2">
+                              <Badge className={`text-xs ${
+                                task.priority === 'urgent' ? 'bg-red-100 text-red-800' :
+                                task.priority === 'high' ? 'bg-orange-100 text-orange-800' :
+                                task.priority === 'medium' ? 'bg-blue-100 text-blue-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {task.priority}
+                              </Badge>
+                              <Badge className={`text-xs ${
+                                task.status === 'completed' ? 'bg-green-100 text-green-800' :
+                                task.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {task.status.replace('_', ' ')}
+                              </Badge>
+                            </div>
+                            {task.estimatedDuration && (
+                              <p className="text-xs text-muted-foreground mt-1">{task.estimatedDuration}</p>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </>
+                );
+              })()}
 
               {/* Mini calendar for current month */}
               <div className="mt-6 pt-6 border-t border-border">
@@ -195,25 +269,31 @@ export default function Calendar() {
             
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <div className="text-center">
-                <div className="text-3xl font-bold text-primary mb-2">3</div>
+                <div className="text-3xl font-bold text-primary mb-2">{monthStats.daysWithTasks}</div>
                 <p className="text-sm text-muted-foreground">Days with tasks</p>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-green-600 mb-2">0</div>
+                <div className="text-3xl font-bold text-green-600 mb-2">{monthStats.completed}</div>
                 <p className="text-sm text-muted-foreground">Completed this month</p>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-orange-600 mb-2">2</div>
+                <div className="text-3xl font-bold text-orange-600 mb-2">{monthStats.pending}</div>
                 <p className="text-sm text-muted-foreground">Pending this month</p>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-red-600 mb-2">0</div>
+                <div className="text-3xl font-bold text-red-600 mb-2">{monthStats.overdue}</div>
                 <p className="text-sm text-muted-foreground">Overdue this month</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Task Dialog */}
+      <TaskDialog 
+        open={isTaskDialogOpen} 
+        onOpenChange={setIsTaskDialogOpen}
+      />
     </>
   );
 }

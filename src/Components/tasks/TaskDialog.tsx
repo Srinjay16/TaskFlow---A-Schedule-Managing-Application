@@ -6,6 +6,7 @@ import { Textarea } from "@/Components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/Components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/Components/ui/dialog";
 import { CalendarIcon, Plus } from "lucide-react";
+import { useTask } from "@/contexts/TaskContext";
 import { useToast } from "@/hooks/use-toast";
 
 interface TaskDialogProps {
@@ -14,6 +15,7 @@ interface TaskDialogProps {
 }
 
 export default function TaskDialog({ open, onOpenChange }: TaskDialogProps) {
+  const { addTask } = useTask();
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     title: "",
@@ -36,12 +38,14 @@ export default function TaskDialog({ open, onOpenChange }: TaskDialogProps) {
       return;
     }
 
-    // Here you would typically save the task to your backend/database
-    console.log("Creating task:", formData);
-    
-    toast({
-      title: "Success!",
-      description: `Task "${formData.title}" has been created successfully.`,
+    // Add task to global state
+    addTask({
+      title: formData.title,
+      description: formData.description,
+      priority: (formData.priority as any) || 'medium',
+      category: (formData.category as any) || 'personal', 
+      dueDate: formData.dueDate,
+      estimatedDuration: formData.estimatedDuration,
     });
 
     // Reset form and close dialog
