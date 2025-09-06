@@ -1,0 +1,97 @@
+{
+  "name": "Task",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Task title"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description of the task"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "urgent"
+      ],
+      "default": "medium",
+      "description": "Task priority level"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "in_progress",
+        "completed"
+      ],
+      "default": "pending",
+      "description": "Current task status"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "work",
+        "personal",
+        "health",
+        "learning",
+        "finance",
+        "social"
+      ],
+      "default": "personal",
+      "description": "Task category"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the task is due"
+    },
+    "recurring": {
+      "type": "string",
+      "enum": [
+        "none",
+        "daily",
+        "weekly",
+        "monthly",
+        "custom"
+      ],
+      "default": "none",
+      "description": "Recurring pattern"
+    },
+    "reminder_time": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When to remind about this task"
+    },
+    "estimated_duration": {
+      "type": "number",
+      "description": "Estimated time to complete in minutes"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When task was completed"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Custom tags for the task"
+    }
+  },
+  "required": [
+    "title"
+  ],
+  "rls": {
+    "read": {
+      "created_by": "{{user.email}}"
+    },
+    "write": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}
