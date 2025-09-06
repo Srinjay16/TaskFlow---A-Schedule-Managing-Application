@@ -69,6 +69,5 @@ This is a modern React-based schedule management application built with TypeScri
 - **Migration Output**: Database migrations stored in `./migrations` directory
 
 ### External Services
-- **Replit Integration**: Configured for Replit development environment with banner script
 - **Font Loading**: Google Fonts integration for custom typography
 - **Environment Configuration**: Environment-based database configuration
